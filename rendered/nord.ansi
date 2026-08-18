@@ -1,0 +1,16 @@
+black	\x1b[38;2;59;66;82m
+red	\x1b[38;2;191;97;106m
+green	\x1b[38;2;163;190;140m
+yellow	\x1b[38;2;235;203;139m
+blue	\x1b[38;2;94;129;172m
+magenta	\x1b[38;2;180;142;173m
+cyan	\x1b[38;2;136;192;208m
+white	\x1b[38;2;229;233;240m
+bright-black	\x1b[38;2;76;86;106m
+bright-red	\x1b[38;2;191;97;106m
+bright-green	\x1b[38;2;163;190;140m
+bright-yellow	\x1b[38;2;235;203;139m
+bright-blue	\x1b[38;2;129;161;193m
+bright-magenta	\x1b[38;2;180;142;173m
+bright-cyan	\x1b[38;2;143;188;187m
+bright-white	\x1b[38;2;236;239;244m

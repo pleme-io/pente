@@ -180,11 +180,16 @@ fn render_rust(theme: FleetTheme, t: &Theme) -> String {
             let _ = writeln!(out, "// {line}");
         }
     }
-    let _ = writeln!(out, "\n#![allow(clippy::unreadable_literal)]\n");
+    // An item-level attribute, NOT an inner `#![…]`: these files are consumed
+    // with `include!`, and an inner attribute is only legal at the top of a
+    // file or module. Emitting one would make every generated artifact
+    // uncompilable in the way its consumers actually use it.
+    out.push('\n');
     let _ = writeln!(
         out,
         "/// The sixteen base16 slots, in wire order, as `0xRRGGBB`."
     );
+    let _ = writeln!(out, "#[allow(clippy::unreadable_literal)]");
     let _ = writeln!(out, "pub const BASE16: [u32; 16] = [");
     for (name, c) in ramp_slots(t) {
         let _ = writeln!(
@@ -202,6 +207,7 @@ fn render_rust(theme: FleetTheme, t: &Theme) -> String {
         out,
         "/// derivations of this disagreed before it had one source."
     );
+    let _ = writeln!(out, "#[allow(clippy::unreadable_literal)]");
     let _ = writeln!(out, "pub const ANSI16: [u32; 16] = [");
     for (i, tok) in t.ansi.in_order().into_iter().enumerate() {
         let c = t.resolve(tok);
