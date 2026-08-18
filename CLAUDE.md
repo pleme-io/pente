@@ -10,9 +10,42 @@
 > repo as existing on GitHub until `gh repo view pleme-io/pente` says so.
 
 A theme is authored **once**, as a `(deftheme …)` tatara-lisp form over a typed
-Rust border, and rendered to every consumer. The ramp in
-`themes/nord.theme.lisp` is the only place in the fleet a colour literal may
-appear.
+Rust border, and rendered to every consumer. A theme's ramp is the only place in
+the fleet a colour literal may appear.
+
+## The three themes — Nord is the default, the others are choices
+
+| theme | `base00` | character |
+|---|---|---|
+| **`nord`** — the fleet default | `2E3440` | cool, the standard |
+| `borealis` | `1F222F` | cool blue-grey aurora night, deeper |
+| `vellum` | `16140E` | warm aged-paper matte, deepest |
+
+`FleetTheme::default()` is `Nord`, and `FleetTheme::ALL` is what a renderer
+iterates — so a target that cannot render some theme stops compiling rather than
+rendering blank. That is not hypothetical: the census measured **twelve** render
+targets for Nord against **four** for Vellum in ishou, so selecting a
+non-default theme silently un-themed eight consumers.
+
+### Borealis was restored, not invented
+
+Borealis was a real palette (`ishou-tokens::BorealisPalette::night`) until commit
+`756bd35`, *"theme: replace Borealis with Vellum"*, which deleted the palette and
+**left the name behind pointing at a different one**:
+
+```rust
+// frost/crates/frost-lisp/src/theme.rs:120
+pub fn borealis_night() -> ThemeSpec {
+    // Borealis was retired in favour of Vellum …
+    use ishou_tokens::VellumPalette;
+    let p = VellumPalette::vellum();
+```
+
+So the operator's login shell has rendered **Vellum** under the name
+`borealis-night` ever since. Every value in `themes/borealis.theme.lisp` is
+recovered from `git show 756bd35^` and transcribed byte-for-byte;
+`no_two_themes_share_a_ramp` is the test that stops a name and a palette
+drifting apart again.
 
 ## Why
 

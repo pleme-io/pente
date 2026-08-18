@@ -418,15 +418,45 @@ impl Theme {
         }
     }
 
+    /// ★ Blends in LINEAR space, not sRGB. This is not a refinement — mixing
+    /// gamma-encoded bytes directly is simply the wrong arithmetic, and it is
+    /// the exact defect `theory/THEME-ARCHITECTURE.md` built ishou's typed
+    /// `Srgb`/`Linear` split to make uncompilable ("washed-out gray instead of
+    /// Nord dark in mado post-rebuild").
+    ///
+    /// The first draft of this function mixed raw `u8`s and was wrong. It was
+    /// caught by recovering Borealis from git history and finding that its own
+    /// `blend_linear` — the function that produced the palette's shipped
+    /// `base02` — round-trips through the sRGB transfer function. Reproducing
+    /// that byte-for-byte is what makes a recovered palette actually the same
+    /// palette; the naive mix differs by several counts per channel.
     fn blend(&self, b: Blend) -> Srgb8 {
+        // sRGB transfer functions (IEC 61966-2-1), matching ishou's own.
+        fn to_linear(c: u8) -> f64 {
+            let c = f64::from(c) / 255.0;
+            if c <= 0.040_45 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        }
+        fn to_channel(l: f64) -> u8 {
+            let v = if l <= 0.003_130_8 {
+                12.92 * l
+            } else {
+                1.055 * l.powf(1.0 / 2.4) - 0.055
+            };
+            let scaled = (v * 255.0).round();
+            if scaled.is_nan() {
+                return 0;
+            }
+            scaled.clamp(0.0, 255.0) as u8
+        }
+
         let over = self.ramp.get(b.over).unwrap_or(self.ramp.base00);
         let tint = self.ramp.get(b.tint).unwrap_or(self.ramp.base00);
         let a = b.alpha.clamp(0.0, 1.0);
-        let mix = |o: u8, t: u8| {
-            let v = f64::from(o).mul_add(1.0 - a, f64::from(t) * a);
-            // `.round()` then clamp: a mid-channel value must not wrap.
-            v.round().clamp(0.0, 255.0) as u8
-        };
+        let mix = |o: u8, t: u8| to_channel(to_linear(o).mul_add(1.0 - a, to_linear(t) * a));
         Srgb8 {
             r: mix(over.r, tint.r),
             g: mix(over.g, tint.g),
@@ -483,11 +513,62 @@ impl Theme {
     }
 }
 
+/// The fleet's themes. **Nord is the default; the others are choices.**
+///
+/// Closed on purpose. A renderer matches on this, so a theme that some target
+/// cannot render stops compiling rather than rendering blank — which is the
+/// asymmetry the census found in ishou, where twelve render targets existed for
+/// Nord and four for Vellum, so "swap the theme" silently un-themed eight
+/// consumers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, DeriveKeywordSexp)]
+pub enum FleetTheme {
+    /// The fleet default (operator decision, 2026-08-18).
+    Nord,
+    /// Cool blue-grey aurora night. Restored from history — see
+    /// `themes/borealis.theme.lisp`.
+    Borealis,
+    /// Warm aged-paper matte. The pre-Nord incumbent.
+    Vellum,
+}
+
+impl Default for FleetTheme {
+    /// Nord. Every consumer that does not choose gets it.
+    fn default() -> Self {
+        Self::Nord
+    }
+}
+
+impl FleetTheme {
+    /// Every theme. A renderer iterating this cannot forget one, and adding a
+    /// variant breaks the array length until it is handled.
+    pub const ALL: [Self; 3] = [Self::Nord, Self::Borealis, Self::Vellum];
+
+    /// The authored source, compiled into the binary so a theme cannot be
+    /// missing at runtime and cannot be edited out from under a consumer.
+    #[must_use]
+    pub const fn source(self) -> &'static str {
+        match self {
+            Self::Nord => include_str!("../../themes/nord.theme.lisp"),
+            Self::Borealis => include_str!("../../themes/borealis.theme.lisp"),
+            Self::Vellum => include_str!("../../themes/vellum.theme.lisp"),
+        }
+    }
+
+    /// Compile this theme.
+    ///
+    /// # Errors
+    /// Returns the typed `LispError` if the authored form is malformed — which
+    /// the test suite makes a build failure rather than a runtime one.
+    pub fn load(self) -> tatara_lisp::Result<Theme> {
+        Theme::from_source(self.source())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const NORD: &str = include_str!("../../themes/nord.theme.lisp");
+    const NORD: &str = FleetTheme::Nord.source();
 
     fn nord() -> Theme {
         Theme::from_source(NORD).expect("the authored Nord theme must compile")
@@ -617,6 +698,114 @@ mod tests {
             t.validate(),
             Err(SpecError::AlphaOutOfRange { .. })
         ));
+    }
+
+    // ── The three themes ───────────────────────────────────────────────
+
+    #[test]
+    fn nord_is_the_default() {
+        assert_eq!(FleetTheme::default(), FleetTheme::Nord);
+        assert_eq!(FleetTheme::default().load().unwrap().name, "nord");
+    }
+
+    /// Every theme compiles and validates. This is what makes a theme swap a
+    /// real operation rather than a hope: the failure mode it removes is a
+    /// palette that only the default renders correctly.
+    #[test]
+    fn every_fleet_theme_compiles_and_validates() {
+        for t in FleetTheme::ALL {
+            let theme = t.load().unwrap_or_else(|e| panic!("{t:?} failed to compile: {e}"));
+            theme
+                .validate()
+                .unwrap_or_else(|e| panic!("{t:?} failed to validate: {e}"));
+        }
+    }
+
+    /// Every theme names itself, and no two share a name.
+    #[test]
+    fn the_three_themes_are_distinctly_named() {
+        let names: Vec<String> = FleetTheme::ALL
+            .iter()
+            .map(|t| t.load().unwrap().name)
+            .collect();
+        assert_eq!(names, vec!["nord", "borealis", "vellum"]);
+    }
+
+    /// ★ They are genuinely DIFFERENT PALETTES, not tints of one.
+    ///
+    /// Worth pinning because for months they were not: `borealis_night()` in
+    /// frost has been returning `VellumPalette::vellum()` under the Borealis
+    /// name since commit 756bd35 retired the palette and kept the label. A
+    /// theme that answers to a name that is not its palette is the exact bug
+    /// this assertion makes impossible to reintroduce silently.
+    #[test]
+    fn no_two_themes_share_a_ramp() {
+        let ramps: Vec<(FleetTheme, Ramp)> = FleetTheme::ALL
+            .iter()
+            .map(|t| (*t, t.load().unwrap().ramp))
+            .collect();
+        for (i, (ta, ra)) in ramps.iter().enumerate() {
+            for (tb, rb) in ramps.iter().skip(i + 1) {
+                assert_ne!(ra, rb, "{ta:?} and {tb:?} are the same palette");
+            }
+        }
+        // And the backgrounds differ in TEMPERATURE, not just value — Borealis
+        // is blue-dominant, Vellum red-dominant, Nord blue-dominant but lighter.
+        let bg = |t: FleetTheme| t.load().unwrap().ramp.base00;
+        assert!(bg(FleetTheme::Vellum).r > bg(FleetTheme::Vellum).b, "Vellum is warm");
+        assert!(bg(FleetTheme::Borealis).b > bg(FleetTheme::Borealis).r, "Borealis is cool");
+    }
+
+    /// Every role and every ANSI slot resolves, in every theme.
+    ///
+    /// The asymmetry this forbids is the one the census measured in ishou:
+    /// twelve render targets for Nord against four for Vellum, so selecting a
+    /// non-default theme silently un-themed eight consumers.
+    #[test]
+    fn every_theme_resolves_every_role_and_ansi_slot() {
+        for t in FleetTheme::ALL {
+            let th = t.load().unwrap();
+            let r = &th.roles;
+            for tok in [
+                r.background, r.surface, r.surface_elevated, r.text, r.text_muted,
+                r.text_dim, r.primary, r.accent, r.border, r.error, r.warning,
+                r.success, r.info, r.selection, r.cursor, r.agent,
+            ] {
+                let _ = th.resolve(tok);
+            }
+            for (i, tok) in th.ansi.in_order().into_iter().enumerate() {
+                let c = th.resolve(tok);
+                assert_ne!(
+                    (i, c),
+                    (0, th.ramp.base00),
+                    "{t:?}: ANSI black must never be the background"
+                );
+            }
+        }
+    }
+
+    /// ★ The blend is gamma-correct, pinned against a value the fleet already
+    /// shipped.
+    ///
+    /// Borealis's original `selection` was `blend_linear(night0, fable_violet,
+    /// 0.08)` computed in LINEAR space, and shipped as `3F3955`. Reproducing it
+    /// is the check that this crate's blend does the same arithmetic — the
+    /// first draft mixed raw sRGB bytes and lands several counts off per
+    /// channel, which is precisely the washed-out-render class ishou's typed
+    /// colour spaces exist to prevent.
+    #[test]
+    fn the_blend_is_linear_space_not_srgb() {
+        let night0 = Srgb8 { r: 0x1F, g: 0x22, b: 0x2F };
+        let violet = Srgb8 { r: 0xB6, g: 0x9A, b: 0xE9 };
+        let mut t = FleetTheme::Borealis.load().unwrap();
+        t.ramp.base00 = night0;
+        t.ramp.base0c = violet;
+        t.derived.selection = Blend { over: Token::Base00, tint: Token::Base0c, alpha: 0.08 };
+        assert_eq!(
+            t.resolve(Token::Selection).to_bare_hex(),
+            "3f3955",
+            "must reproduce ishou's shipped blend_linear output"
+        );
     }
 
     #[test]
