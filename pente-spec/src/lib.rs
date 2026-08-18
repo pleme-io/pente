@@ -543,6 +543,22 @@ impl FleetTheme {
     /// variant breaks the array length until it is handled.
     pub const ALL: [Self; 3] = [Self::Nord, Self::Borealis, Self::Vellum];
 
+    /// The stable identifier used in artifact names and file names.
+    ///
+    /// Derived here rather than authored in the theme, deliberately: stylix
+    /// interpolates a slug into generated artefact NAMES (`base16-${slug}`,
+    /// `${slug}-gnome-shell-theme`), so an authored-and-mistyped one keeps every
+    /// colour byte-identical while silently renaming a pile of store paths.
+    /// Deriving it from the closed enum makes that unrepresentable.
+    #[must_use]
+    pub const fn slug(self) -> &'static str {
+        match self {
+            Self::Nord => "nord",
+            Self::Borealis => "borealis",
+            Self::Vellum => "vellum",
+        }
+    }
+
     /// The authored source, compiled into the binary so a theme cannot be
     /// missing at runtime and cannot be edited out from under a consumer.
     #[must_use]

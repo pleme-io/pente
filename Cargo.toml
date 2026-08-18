@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["pente-spec"]
+members = ["pente-spec", "pente-forge"]
 
 [workspace.package]
 version = "0.1.0"
