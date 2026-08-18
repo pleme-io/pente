@@ -27,6 +27,7 @@
 //! theme does not compile.
 
 pub mod nix_ast;
+pub mod reconcile;
 
 use nix_ast::{NixExpr, NixFile};
 use pente_spec::{FleetTheme, Srgb8, Theme, Token};
