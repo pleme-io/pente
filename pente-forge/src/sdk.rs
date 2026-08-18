@@ -151,6 +151,75 @@ impl Lang {
     }
 }
 
+/// What a conformance column can actually catch.
+///
+/// ★ Added 2026-08-18 after an adversarial review of the sibling `saihai` spec
+/// named the flaw in this crate's own testing story: **the Rust column is
+/// self-referential.** The corpus is serialised from the Rust reference, so a
+/// Rust suite comparing Rust constants against it compares an encoder with its
+/// own output. It cannot fail on an emitter bug, because there is only one
+/// emitter in the loop.
+///
+/// The three non-Rust columns are genuine cross-implementation checks: corpus
+/// and constants travel through different code paths, so a per-language emitter
+/// bug shows up.
+///
+/// Keeping this as a TYPE rather than a caveat in prose is the point. A comment
+/// saying "note, Rust is self-referential" decays; a coverage report that
+/// prints the two counts separately cannot quietly merge them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Column {
+    /// Corpus and constants come from different code paths — a real check.
+    CrossImplementation,
+    /// Corpus and constants come from the same code path. Kept for regression
+    /// value, never counted toward a coverage claim.
+    SelfReferential,
+}
+
+/// How coverage may honestly be described.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Coverage {
+    /// Languages whose agreement with the reference is genuinely testable.
+    pub cross_implementation: Vec<&'static str>,
+    /// Languages whose column cannot fail on an emitter bug.
+    pub self_referential: Vec<&'static str>,
+    /// Themes covered by each column.
+    pub themes: usize,
+}
+
+impl Coverage {
+    #[must_use]
+    pub fn measure() -> Self {
+        Self {
+            cross_implementation: Lang::ALL.iter().map(|l| l.name()).collect(),
+            // Rust is the reference: it produces the corpus, so its own
+            // conformance is circular by construction.
+            self_referential: vec!["rust"],
+            themes: FleetTheme::ALL.len(),
+        }
+    }
+
+    /// The report, worded so it cannot be read as a wider claim than it is.
+    #[must_use]
+    pub fn report(&self) -> String {
+        let mut s = String::new();
+        let _ = writeln!(
+            s,
+            "cross-implementation columns: {}  ({})  — {} themes each",
+            self.cross_implementation.len(),
+            self.cross_implementation.join(", "),
+            self.themes
+        );
+        let _ = writeln!(
+            s,
+            "self-referential column:      {}  ({})  — regression value only, NOT counted",
+            self.self_referential.len(),
+            self.self_referential.join(", ")
+        );
+        s
+    }
+}
+
 // ── The corpus ─────────────────────────────────────────────────────────────
 
 /// The canonical conformance corpus: every theme, every resolved value, as
@@ -547,6 +616,26 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// ★ The coverage claim is structurally honest.
+    ///
+    /// Rust must never appear in the cross-implementation column: it produces
+    /// the corpus, so its own conformance compares an encoder with its own
+    /// output and cannot fail on an emitter bug. If someone later "simplifies"
+    /// this by merging the two lists, this test fails.
+    #[test]
+    fn rust_is_never_counted_as_a_cross_implementation_column() {
+        let c = Coverage::measure();
+        assert!(
+            !c.cross_implementation.contains(&"rust"),
+            "rust is self-referential and must not be counted: {c:?}"
+        );
+        assert!(c.self_referential.contains(&"rust"));
+        assert_eq!(c.cross_implementation.len(), Lang::ALL.len());
+        assert_eq!(c.themes, FleetTheme::ALL.len());
+        let r = c.report();
+        assert!(r.contains("NOT counted"), "the report must say so out loud");
     }
 
     #[test]

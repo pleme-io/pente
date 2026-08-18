@@ -14,7 +14,7 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use pente_forge::sdk::{corpus, Lang};
+use pente_forge::sdk::{corpus, Coverage, Lang};
 use pente_forge::Target;
 use pente_spec::FleetTheme;
 
@@ -25,7 +25,8 @@ fn usage() -> ExitCode {
          USAGE:\n    \
              pente-forge build <out-dir>    write every theme × every target\n    \
              pente-forge check <out-dir>    diff against disk; non-zero on drift\n    \
-             pente-forge list               print the matrix without writing\n"
+             pente-forge list               print the matrix without writing\n    \
+             pente-forge coverage           what the conformance suites actually prove\n"
     );
     ExitCode::from(2)
 }
@@ -121,6 +122,10 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let run = || -> Result<ExitCode, String> {
         match args.first().map(String::as_str) {
+            Some("coverage") => {
+                print!("{}", Coverage::measure().report());
+                Ok(ExitCode::SUCCESS)
+            }
             Some("list") => {
                 for (name, body) in matrix()? {
                     println!("{:<28} {:>6} bytes", name.display(), body.len());
