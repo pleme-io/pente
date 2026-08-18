@@ -505,10 +505,12 @@ impl Theme {
     /// comes back with a did-you-mean and the allowed set.
     pub fn from_source(src: &str) -> tatara_lisp::Result<Self> {
         let forms = tatara_lisp::read(src)?;
-        let first = forms.first().ok_or_else(|| tatara_lisp::LispError::Compile {
-            form: Self::KEYWORD.to_string(),
-            message: "source contains no forms".into(),
-        })?;
+        let first = forms
+            .first()
+            .ok_or_else(|| tatara_lisp::LispError::Compile {
+                form: Self::KEYWORD.to_string(),
+                message: "source contains no forms".into(),
+            })?;
         Self::compile_from_sexp(first)
     }
 }
@@ -730,7 +732,9 @@ mod tests {
     #[test]
     fn every_fleet_theme_compiles_and_validates() {
         for t in FleetTheme::ALL {
-            let theme = t.load().unwrap_or_else(|e| panic!("{t:?} failed to compile: {e}"));
+            let theme = t
+                .load()
+                .unwrap_or_else(|e| panic!("{t:?} failed to compile: {e}"));
             theme
                 .validate()
                 .unwrap_or_else(|e| panic!("{t:?} failed to validate: {e}"));
@@ -768,8 +772,14 @@ mod tests {
         // And the backgrounds differ in TEMPERATURE, not just value — Borealis
         // is blue-dominant, Vellum red-dominant, Nord blue-dominant but lighter.
         let bg = |t: FleetTheme| t.load().unwrap().ramp.base00;
-        assert!(bg(FleetTheme::Vellum).r > bg(FleetTheme::Vellum).b, "Vellum is warm");
-        assert!(bg(FleetTheme::Borealis).b > bg(FleetTheme::Borealis).r, "Borealis is cool");
+        assert!(
+            bg(FleetTheme::Vellum).r > bg(FleetTheme::Vellum).b,
+            "Vellum is warm"
+        );
+        assert!(
+            bg(FleetTheme::Borealis).b > bg(FleetTheme::Borealis).r,
+            "Borealis is cool"
+        );
     }
 
     /// Every role and every ANSI slot resolves, in every theme.
@@ -783,9 +793,22 @@ mod tests {
             let th = t.load().unwrap();
             let r = &th.roles;
             for tok in [
-                r.background, r.surface, r.surface_elevated, r.text, r.text_muted,
-                r.text_dim, r.primary, r.accent, r.border, r.error, r.warning,
-                r.success, r.info, r.selection, r.cursor, r.agent,
+                r.background,
+                r.surface,
+                r.surface_elevated,
+                r.text,
+                r.text_muted,
+                r.text_dim,
+                r.primary,
+                r.accent,
+                r.border,
+                r.error,
+                r.warning,
+                r.success,
+                r.info,
+                r.selection,
+                r.cursor,
+                r.agent,
             ] {
                 let _ = th.resolve(tok);
             }
@@ -811,12 +834,24 @@ mod tests {
     /// colour spaces exist to prevent.
     #[test]
     fn the_blend_is_linear_space_not_srgb() {
-        let night0 = Srgb8 { r: 0x1F, g: 0x22, b: 0x2F };
-        let violet = Srgb8 { r: 0xB6, g: 0x9A, b: 0xE9 };
+        let night0 = Srgb8 {
+            r: 0x1F,
+            g: 0x22,
+            b: 0x2F,
+        };
+        let violet = Srgb8 {
+            r: 0xB6,
+            g: 0x9A,
+            b: 0xE9,
+        };
         let mut t = FleetTheme::Borealis.load().unwrap();
         t.ramp.base00 = night0;
         t.ramp.base0c = violet;
-        t.derived.selection = Blend { over: Token::Base00, tint: Token::Base0c, alpha: 0.08 };
+        t.derived.selection = Blend {
+            over: Token::Base00,
+            tint: Token::Base0c,
+            alpha: 0.08,
+        };
         assert_eq!(
             t.resolve(Token::Selection).to_bare_hex(),
             "3f3955",
@@ -827,7 +862,9 @@ mod tests {
     #[test]
     fn srgb8_normalises_a_leading_hash_and_rejects_junk() {
         assert_eq!(
-            Srgb8::try_from("#2E3440".to_string()).unwrap().to_bare_hex(),
+            Srgb8::try_from("#2E3440".to_string())
+                .unwrap()
+                .to_bare_hex(),
             "2e3440"
         );
         assert!(Srgb8::try_from("2E344".to_string()).is_err());

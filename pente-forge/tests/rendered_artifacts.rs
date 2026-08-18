@@ -50,8 +50,9 @@ fn every_committed_artifact_matches_its_generator() {
         for target in Target::ALL {
             let name = target.file_name(theme);
             let path = dir.join(&name);
-            let on_disk = std::fs::read_to_string(&path)
-                .unwrap_or_else(|e| panic!("{name} is missing ({e}). Run: pente-forge build rendered"));
+            let on_disk = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+                panic!("{name} is missing ({e}). Run: pente-forge build rendered")
+            });
             assert_eq!(
                 on_disk,
                 target.render(theme, &t),
@@ -74,7 +75,11 @@ fn every_committed_artifact_matches_its_generator() {
 #[test]
 fn generated_constants_agree_with_the_spec() {
     let cases: [(FleetTheme, [u32; 16], [u32; 16]); 3] = [
-        (FleetTheme::Nord, generated::nord::BASE16, generated::nord::ANSI16),
+        (
+            FleetTheme::Nord,
+            generated::nord::BASE16,
+            generated::nord::ANSI16,
+        ),
         (
             FleetTheme::Borealis,
             generated::borealis::BASE16,
@@ -89,10 +94,22 @@ fn generated_constants_agree_with_the_spec() {
     for (theme, base16, ansi16) in cases {
         let t = theme.load().unwrap();
         let ramp = [
-            t.ramp.base00, t.ramp.base01, t.ramp.base02, t.ramp.base03,
-            t.ramp.base04, t.ramp.base05, t.ramp.base06, t.ramp.base07,
-            t.ramp.base08, t.ramp.base09, t.ramp.base0a, t.ramp.base0b,
-            t.ramp.base0c, t.ramp.base0d, t.ramp.base0e, t.ramp.base0f,
+            t.ramp.base00,
+            t.ramp.base01,
+            t.ramp.base02,
+            t.ramp.base03,
+            t.ramp.base04,
+            t.ramp.base05,
+            t.ramp.base06,
+            t.ramp.base07,
+            t.ramp.base08,
+            t.ramp.base09,
+            t.ramp.base0a,
+            t.ramp.base0b,
+            t.ramp.base0c,
+            t.ramp.base0d,
+            t.ramp.base0e,
+            t.ramp.base0f,
         ];
         for (i, c) in ramp.into_iter().enumerate() {
             let packed = (u32::from(c.r) << 16) | (u32::from(c.g) << 8) | u32::from(c.b);
@@ -114,11 +131,18 @@ fn generated_constants_agree_with_the_spec() {
 #[test]
 fn the_generated_nord_ansi_carries_the_verdict() {
     let a = generated::nord::ANSI16;
-    assert_eq!(a[0], 0x3B4252, "ANSI black is polar-night-1, not the background");
+    assert_eq!(
+        a[0], 0x3B4252,
+        "ANSI black is polar-night-1, not the background"
+    );
     assert_eq!(a[6], 0x88C0D0, "ANSI cyan");
     assert_eq!(a[7], 0xE5E9F0, "ANSI white");
     assert_eq!(a[14], 0x8FBCBB, "ANSI bright-cyan");
-    assert_ne!(a[0], generated::nord::BASE16[0], "black must never equal the background");
+    assert_ne!(
+        a[0],
+        generated::nord::BASE16[0],
+        "black must never equal the background"
+    );
 }
 
 /// No artifact may carry a `#RRGGBB` in a target whose wire format is bare hex.

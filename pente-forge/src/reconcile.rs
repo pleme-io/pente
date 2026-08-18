@@ -178,7 +178,11 @@ pub fn plan(desired: &Desired) -> Result<Plan, String> {
         })
         .collect();
     notify.dedup();
-    actions.extend(notify.into_iter().map(|target| Action::NotifyConsumer { target }));
+    actions.extend(
+        notify
+            .into_iter()
+            .map(|target| Action::NotifyConsumer { target }),
+    );
 
     Ok(Plan { actions, examined })
 }
@@ -202,11 +206,10 @@ pub fn apply(desired: &Desired, plan: &Plan) -> Result<Vec<Action>, String> {
                 path,
                 ..
             } => {
-                let t = theme
-                    .load()
-                    .map_err(|e| format!("theme {theme:?}: {e}"))?;
+                let t = theme.load().map_err(|e| format!("theme {theme:?}: {e}"))?;
                 if let Some(parent) = Path::new(path).parent() {
-                    std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+                    std::fs::create_dir_all(parent)
+                        .map_err(|e| format!("{}: {e}", parent.display()))?;
                 }
                 std::fs::write(path, target.render(*theme, &t))
                     .map_err(|e| format!("{}: {e}", path.display()))?;
@@ -246,7 +249,10 @@ mod tests {
         assert_eq!(writes.len(), p.examined);
         assert!(p.actions.iter().all(|a| !matches!(
             a,
-            Action::WriteArtifact { reason: Drift::Stale, .. }
+            Action::WriteArtifact {
+                reason: Drift::Stale,
+                ..
+            }
         )));
         assert!(!p.is_converged());
     }
@@ -279,7 +285,9 @@ mod tests {
         let d = desired(tmp("drift"));
         apply(&d, &plan(&d).unwrap()).unwrap();
 
-        let victim = d.root.join(Target::NixBase16.file_name(FleetTheme::Borealis));
+        let victim = d
+            .root
+            .join(Target::NixBase16.file_name(FleetTheme::Borealis));
         std::fs::write(&victim, "corrupted").unwrap();
 
         let p = plan(&d).unwrap();
@@ -315,7 +323,12 @@ mod tests {
             .filter(|a| matches!(a, Action::NotifyConsumer { .. }))
             .collect();
         assert_eq!(notifies.len(), 1);
-        assert_eq!(notifies[0], &Action::NotifyConsumer { target: Target::Css });
+        assert_eq!(
+            notifies[0],
+            &Action::NotifyConsumer {
+                target: Target::Css
+            }
+        );
     }
 
     /// ★ Vacuous convergence is unreachable: an empty plan that examined

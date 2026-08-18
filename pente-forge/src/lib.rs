@@ -194,11 +194,7 @@ fn render_rust(theme: FleetTheme, t: &Theme) -> String {
     let _ = writeln!(out, "#[allow(clippy::unreadable_literal)]");
     let _ = writeln!(out, "pub const BASE16: [u32; 16] = [");
     for (name, c) in ramp_slots(t) {
-        let _ = writeln!(
-            out,
-            "    0x{:02X}{:02X}{:02X}, // {name}",
-            c.r, c.g, c.b
-        );
+        let _ = writeln!(out, "    0x{:02X}{:02X}{:02X}, // {name}", c.r, c.g, c.b);
     }
     let _ = writeln!(out, "];\n");
     let _ = writeln!(
@@ -245,7 +241,11 @@ fn render_ghostty(t: &Theme) -> String {
     for (i, tok) in t.ansi.in_order().into_iter().enumerate() {
         let _ = writeln!(out, "palette = {i}={}", hash_hex(t.resolve(tok)));
     }
-    let _ = writeln!(out, "background = {}", hash_hex(t.resolve(t.roles.background)));
+    let _ = writeln!(
+        out,
+        "background = {}",
+        hash_hex(t.resolve(t.roles.background))
+    );
     let _ = writeln!(out, "foreground = {}", hash_hex(t.resolve(t.roles.text)));
     let _ = writeln!(
         out,
@@ -364,8 +364,14 @@ mod tests {
                 .filter(|l| !l.trim_start().starts_with('#'))
                 .collect::<Vec<_>>()
                 .join("\n");
-            assert!(!code.contains("yaml ="), "{th:?} reintroduced the IFD shape");
-            assert!(code.contains("base00 = \""), "{th:?} is not a parsed attrset");
+            assert!(
+                !code.contains("yaml ="),
+                "{th:?} reintroduced the IFD shape"
+            );
+            assert!(
+                code.contains("base00 = \""),
+                "{th:?} is not a parsed attrset"
+            );
             // Metadata is load-bearing: absent, stylix defaults it and renames
             // a pile of store paths while keeping every colour identical.
             for k in ["system", "name", "author", "variant", "slug"] {
@@ -396,7 +402,10 @@ mod tests {
     #[test]
     fn the_ansi_target_emits_decimal_truecolor() {
         let out = Target::AnsiEscapes.render(FleetTheme::Nord, &FleetTheme::Nord.load().unwrap());
-        assert!(out.contains("\\x1b[38;2;59;66;82m"), "black should be 3b4252:\n{out}");
+        assert!(
+            out.contains("\\x1b[38;2;59;66;82m"),
+            "black should be 3b4252:\n{out}"
+        );
         assert!(!out.contains('#'), "the ANSI target must not emit hex");
     }
 

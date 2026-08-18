@@ -50,7 +50,9 @@ fn matrix() -> Result<Vec<(PathBuf, String)>, String> {
         // The SDK modules live under sdk/<lang>/, one per theme.
         for lang in Lang::ALL {
             out.push((
-                PathBuf::from("sdk").join(lang.name()).join(lang.module_name(theme)),
+                PathBuf::from("sdk")
+                    .join(lang.name())
+                    .join(lang.module_name(theme)),
                 lang.render_module(theme, &t),
             ));
         }

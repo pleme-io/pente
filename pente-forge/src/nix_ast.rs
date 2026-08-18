@@ -48,8 +48,11 @@ impl NixExpr {
     /// A bare attribute name if it is one, a quoted one otherwise.
     fn write_key(out: &mut String, k: &str) {
         let bare = !k.is_empty()
-            && k.chars().next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
-            && k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+            && k.chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+            && k.chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
         if bare {
             out.push_str(k);
         } else {
