@@ -28,6 +28,7 @@
 
 pub mod nix_ast;
 pub mod reconcile;
+pub mod sdk;
 
 use nix_ast::{NixExpr, NixFile};
 use pente_spec::{FleetTheme, Srgb8, Theme, Token};
@@ -91,7 +92,7 @@ impl Target {
 }
 
 /// The sixteen ramp slots, in wire order, as `(name, value)`.
-fn ramp_slots(t: &Theme) -> [(&'static str, Srgb8); 16] {
+pub(crate) fn ramp_slots(t: &Theme) -> [(&'static str, Srgb8); 16] {
     let r = &t.ramp;
     [
         ("base00", r.base00),
@@ -114,7 +115,7 @@ fn ramp_slots(t: &Theme) -> [(&'static str, Srgb8); 16] {
 }
 
 /// The ANSI-16 names in index order — the same order `Ansi16::in_order` yields.
-const ANSI_NAMES: [&str; 16] = [
+pub(crate) const ANSI_NAMES: [&str; 16] = [
     "black",
     "red",
     "green",
@@ -279,7 +280,7 @@ fn hash_hex(c: Srgb8) -> String {
 }
 
 /// Roles as `(css-name, token)`.
-fn roles_named(t: &Theme) -> [(&'static str, Token); 16] {
+pub(crate) fn roles_named(t: &Theme) -> [(&'static str, Token); 16] {
     let r = &t.roles;
     [
         ("background", r.background),

@@ -14,6 +14,7 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use pente_forge::sdk::{corpus, Lang};
 use pente_forge::Target;
 use pente_spec::FleetTheme;
 
@@ -45,6 +46,29 @@ fn matrix() -> Result<Vec<(PathBuf, String)>, String> {
                 target.render(theme, &t),
             ));
         }
+        // The SDK modules live under sdk/<lang>/, one per theme.
+        for lang in Lang::ALL {
+            out.push((
+                PathBuf::from("sdk").join(lang.name()).join(lang.module_name(theme)),
+                lang.render_module(theme, &t),
+            ));
+        }
+    }
+
+    // Per-LANGUAGE, not per-theme: each conformance test iterates the corpus,
+    // so a new theme is covered without a new test file — the property that
+    // stops per-language coverage decaying as themes are added.
+    for lang in Lang::ALL {
+        let dir = PathBuf::from("sdk").join(lang.name());
+        out.push((dir.join(lang.test_name()), lang.render_test()));
+        for (name, body) in lang.scaffold() {
+            out.push((dir.join(name), body));
+        }
+        // The corpus is emitted BESIDE each language's test rather than once at
+        // the root, because every one of these test runners resolves fixtures
+        // relative to its own directory. One shared copy would work for exactly
+        // whichever runner was configured first.
+        out.push((dir.join("corpus.json"), corpus()));
     }
     Ok(out)
 }
@@ -53,6 +77,13 @@ fn build(dir: &Path) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     for (name, body) in matrix()? {
         let path = dir.join(&name);
+        // Artifact names carry directories (sdk/<lang>/…), so each parent is
+        // created rather than assumed. Missed on the first pass: the write
+        // failed silently-ish after five files, which is exactly the shape of
+        // bug a matrix test that only checks the flat targets would not catch.
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+        }
         std::fs::write(&path, body).map_err(|e| format!("{}: {e}", path.display()))?;
         println!("wrote {}", path.display());
     }
