@@ -1,0 +1,13 @@
+[package]
+name = "pente-spec"
+description = "The typed border of the pleme-io theme vocabulary: (deftheme …) as Rust."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tatara-lisp = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
