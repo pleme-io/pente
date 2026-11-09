@@ -420,7 +420,7 @@ impl Theme {
 
     /// ★ Blends in LINEAR space, not sRGB. This is not a refinement — mixing
     /// gamma-encoded bytes directly is simply the wrong arithmetic, and it is
-    /// the exact defect `theory/THEME-ARCHITECTURE.md` built ishou's typed
+    /// the exact defect ishou's typed
     /// `Srgb`/`Linear` split to make uncompilable ("washed-out gray instead of
     /// Nord dark in mado post-rebuild").
     ///

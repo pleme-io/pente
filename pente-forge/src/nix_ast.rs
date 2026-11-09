@@ -1,6 +1,6 @@
 //! A typed Nix AST.
 //!
-//! ★ `format!()` of Nix SYNTAX is banned fleet-wide (theory/NIX-AST.md), and the
+//! ★ `format!()` of Nix SYNTAX is banned fleet-wide, and the
 //! failure it prevents is silent: an unbalanced brace or a missing semicolon
 //! ships as a file that PARSES to the wrong thing rather than failing. So a
 //! renderer builds a value and prints it once, here.
